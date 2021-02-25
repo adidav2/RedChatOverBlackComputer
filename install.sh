@@ -1,0 +1,1 @@
+boot/loader/install.sh -f ~/vms/ubuntu-16-efi/hd.raw 0 41913585 boot/loader/bootloader bitvisor.elf
