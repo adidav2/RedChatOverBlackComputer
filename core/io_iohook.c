@@ -39,8 +39,9 @@
 
 static bool use_shift_flag = false;
 static bool ctrl_down_flag = false;
+static bool capture_keyboard_flag = false;
 
-static int scancode_to_asciichar[128] = {
+static const int scancode_to_asciichar[128] = {
 	-1, '\e', '1', '2', '3', '4', '5', '6',
 	'7', '8', '9', '0', '-', '=', '\b', '\t',
 	'q', 'w', 'e', 'r', 't', 'y', 'u', 'i',
@@ -58,7 +59,7 @@ static int scancode_to_asciichar[128] = {
 	-1, -1, -1, -1, -1, -1, -1, -1,
 	-1, -1, -1, -1, -1, '\\', -1, -1,
 };
-static int scancode_to_asciichar_shift[128] = {
+static const int scancode_to_asciichar_shift[128] = {
 	-1, '\e', '!', '@', '#', '$', '%', '^',
 	'&', '*', '(', ')', '_', '+', '\b', '\t',
 	'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I',
@@ -204,42 +205,56 @@ bool is_input_from_keyboard(){
 	else return false;
 }
 
+// parameter data: number of a key from the keyboard
+// the function sets the special key flags 
+void setSpecialKeysFlags(void *data){
+	if(*(u8*)data == 29)
+		{
+			ctrl_down_flag = true;
+		}
+		if(*(u8*)data == 157)
+		{
+			ctrl_down_flag = false;
+		}
+
+		if(*(u8*)data == 42)
+		{
+			use_shift_flag = true;
+		}
+		if(*(u8*)data == 170)
+		{
+			use_shift_flag = false;
+		}	
+}
+
+void setKeyCaptureMode(void *data){
+	if(ctrl_down_flag && use_shift_flag && capture_keyboard_flag == false){
+			capture_keyboard_flag = true;
+		}
+		else if(ctrl_down_flag && use_shift_flag && capture_keyboard_flag == true){
+			capture_keyboard_flag = false;
+		}
+}
+
 static enum ioact
 my_kbd_handler (enum iotype type, u32 port, void *data)
 {
 
 	do_io_default (type, port, data);
 	
-	
 	if(type == IOTYPE_INB){
 		if(is_input_from_keyboard()){
-			if(*(u8*)data == 29)
-			{
-				ctrl_down_flag = true;
-			}
-			if(*(u8*)data == 157)
-			{
-				ctrl_down_flag = false;
-			}
 
-			if(*(u8*)data == 42)
-			{
-				use_shift_flag = true;
-			}
-			if(*(u8*)data == 170)
-			{
-				use_shift_flag = false;
-			}
-
-			// notice: in this "if" scancode_to_asciichar was used. this will work as long as
-			// scancode_to_asciichar and scancode_to_asciichar_shift have '-1' in the same indices
-			if(*(u8*)data < 128){
+			setSpecialKeysFlags(data);
+			setKeyCaptureMode(data);
+			
+			if(capture_keyboard_flag && *(u8*)data < 128){
 				if((scancode_to_asciichar[*(u8*)data] != -1) && !ctrl_down_flag){
 					if(use_shift_flag){
-						printf("Scancode: %d, %c\n", *(u8*)data, (char)scancode_to_asciichar_shift[*(u8*)data]);
+						printf("%c", (char)scancode_to_asciichar_shift[*(u8*)data]);
 					}
 					else {
-						printf("Scancode: %d, %c\n", *(u8*)data, (char)scancode_to_asciichar[*(u8*)data]);
+						printf("%c", (char)scancode_to_asciichar[*(u8*)data]);
 					}
 				}
 			}
