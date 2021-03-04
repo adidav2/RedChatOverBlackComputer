@@ -251,10 +251,10 @@ my_kbd_handler (enum iotype type, u32 port, void *data)
 			if(capture_keyboard_flag && *(u8*)data < 128){
 				if((scancode_to_asciichar[*(u8*)data] != -1) && !ctrl_down_flag){
 					if(use_shift_flag){
-						printf("%c", (char)scancode_to_asciichar_shift[*(u8*)data]);
+						printf("%c\n", (char)scancode_to_asciichar_shift[*(u8*)data]);
 					}
 					else {
-						printf("%c", (char)scancode_to_asciichar[*(u8*)data]);
+						printf("%c\n", (char)scancode_to_asciichar[*(u8*)data]);
 					}
 				}
 			}

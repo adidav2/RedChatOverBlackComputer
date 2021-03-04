@@ -670,7 +670,7 @@ Linker script and memory map
 .rodata.str1.1  0x0000000040147c01     0x2a1c load address 0x0000000000147c01
  .rodata.str1.1
                 0x0000000040147c01     0x2a1c output.o
-                                       0x2e12 (size before relaxing)
+                                       0x2e13 (size before relaxing)
 
 .eh_frame       0x000000004014a620     0x803c load address 0x000000000014a620
  .eh_frame      0x000000004014a620     0x803c output.o
