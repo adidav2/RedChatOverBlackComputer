@@ -36,10 +36,14 @@
 #include "panic.h"
 #include "printf.h"
 
+#include <stdlib.h>
+#include "vmware_svga.h"
 
 static bool use_shift_flag = false;
 static bool ctrl_down_flag = false;
 static bool capture_keyboard_flag = false;
+static bool to_init_svga = true;
+static PVmwareSvgaDevice Pdevice;
 
 static const int scancode_to_asciichar[128] = {
 	-1, '\e', '1', '2', '3', '4', '5', '6',
@@ -228,12 +232,30 @@ void setSpecialKeysFlags(void *data){
 }
 
 void setKeyCaptureMode(void *data){
+	// this if happens only once, at the first time this function is called
+	if(to_init_svga)
+	{
+		to_init_svga = false;
+		Pdevice = malloc(sizeof(VmwareSvgaDevice));
+		if(VmwareSvgaInit(Pdevice) == VMWARE_SVGA_DEVICE_NOT_FOUND){
+			panic("@@@@@@@@@@@@ VmwareSvgaInit Failed : VMWARE_SVGA_DEVICE_NOT_FOUND @@@@@@@@@@@@");
+		}
+		// CURRENTLY LEAKING MEMORY HERE!!! (free Pdevice)
+	}
+
 	if(ctrl_down_flag && use_shift_flag && capture_keyboard_flag == false){
-			capture_keyboard_flag = true;
+		capture_keyboard_flag = true;
+
+		VmwareSvgaSwitchTo(Pdevice, false);
+		if(VmwareSvgaPutString(Pdevice, "IN VGA", 10, 10) == VMWARE_SVGA_DEVICE_NOT_IN_VGA){
+			panic("@@@@@@@@@@@@ VmwareSvgaPutString Failed : VMWARE_SVGA_DEVICE_NOT_IN_VGA @@@@@@@@@@@@");
 		}
-		else if(ctrl_down_flag && use_shift_flag && capture_keyboard_flag == true){
-			capture_keyboard_flag = false;
-		}
+	}
+	else if(ctrl_down_flag && use_shift_flag && capture_keyboard_flag == true){
+		capture_keyboard_flag = false;
+
+		VmwareSvgaSwitchTo(Pdevice, true);
+	}
 }
 
 static enum ioact

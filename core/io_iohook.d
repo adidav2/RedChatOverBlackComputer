@@ -11,7 +11,8 @@ core/io_iohook.o: core/io_iohook.c core/config.h include/core/config.h \
  core/vt_vmcs.h core/xsetbv.h core/debug.h core/initfunc.h \
  include/core/initfunc.h core/io_iohook.h core/panic.h \
  include/core/panic.h core/printf.h include/core/printf.h \
- include/core/stdarg.h
+ include/core/stdarg.h include/stdlib.h core/vmware_svga.h core/types.h \
+ core/mm.h include/core/mm.h
 
 core/io_iohook.c core/config.h include/core/config.h \
  include/core/types.h include/share/vmm_types.h include/share/config.h \
@@ -26,4 +27,5 @@ core/io_iohook.c core/config.h include/core/config.h \
  core/vt_vmcs.h core/xsetbv.h core/debug.h core/initfunc.h \
  include/core/initfunc.h core/io_iohook.h core/panic.h \
  include/core/panic.h core/printf.h include/core/printf.h \
- include/core/stdarg.h :
+ include/core/stdarg.h include/stdlib.h core/vmware_svga.h core/types.h \
+ core/mm.h include/core/mm.h :

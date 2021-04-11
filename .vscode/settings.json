@@ -6,6 +6,10 @@
         "string_view": "c",
         "printf.h": "c",
         "io_iopass.h": "c",
-        "io.h": "c"
+        "io.h": "c",
+        "stdlib.h": "c",
+        "vmware_svga.h": "c",
+        "io_io.h": "c",
+        "asm.h": "c"
     }
 }
