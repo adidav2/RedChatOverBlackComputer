@@ -35,15 +35,130 @@
 #include "io_iohook.h"
 #include "panic.h"
 #include "printf.h"
+//#include "../drivers/net/pro100.h"
+#include "mm.h"
+//#include "utility.h"
+#include "string.h"
+#include "assert.h"
 
-#include <stdlib.h>
-#include "vmware_svga.h"
+
+/********************************** FOR VGA HANDLING ************************************/
+
+
+#define PCI_VENDOR_ID_VMWARE            0x15AD
+#define PCI_DEVICE_ID_VMWARE_SVGA2      0x0405
+
+#define SVGA_INDEX_PORT         		0x0000
+#define SVGA_VALUE_PORT         		0x0001
+#define SVGA_BIOS_PORT          		0x0002
+#define SVGA_IRQSTATUS_PORT     		0x0008
+
+#define SVGA_REG_ENABLE					0x0001
+
+
+void
+mmio_hphys_access (phys_t gphysaddr, bool wr, void *buf, uint len, u32 flags)
+{
+	void *p;
+
+	if (!len)
+		return;
+	p = mapmem_hphys (gphysaddr, len, (wr ? MAPMEM_WRITE : 0) | flags);
+	ASSERT (p);
+	if (wr)
+		memcpy (p, buf, len);
+	else
+		memcpy (buf, p, len);
+	unmapmem (p, len);
+}
+
+
+__attribute__((always_inline))
+static inline void __outdword(u16 port, u32 data)
+{
+  asm volatile("outl %0,%1" :: "a" (data), "Nd" (port));
+}
+
+__attribute__((always_inline))
+static inline u32 __indword(u16 port)
+{
+  u32 value;
+  asm volatile("inl %1,%0" : "=a" (value) : "Nd" (port));
+  return value;
+}
+
+static u32 ReadReg(u32 ioBase, u32 index)
+{
+	__outdword(ioBase + SVGA_INDEX_PORT, index);
+	return __indword(ioBase + SVGA_VALUE_PORT);
+}
+
+// changes register in certain hardware
+static void WriteReg(u32 ioBase, u32 index, u32 value)
+{
+	__outdword(ioBase + SVGA_INDEX_PORT, index);
+	__outdword(ioBase + SVGA_VALUE_PORT, value);
+}
+
+// writes string in row and column
+u8 VmwareSvgaPutString(PVmwareSvgaDevice device, char *s, u64 row, u64 column)
+{
+	printf("\nVmwareSvgaPutString : at start\n"); /***** DEBUG *****/
+	if (device->isSvga)
+		return VMWARE_SVGA_DEVICE_NOT_IN_VGA;
+	printf("\nVmwareSvgaPutString : after if\n"); /***** DEBUG *****/
+	//char *p; = (char*)phys_to_virt(0xB8000) + (row * 80 + column) * 2; // phys_to_virt := converts a physical address to virtual address, doesnt exist in bitvisor
+	//printf("\nVmwareSvgaPutString : after dereferencing address\n"); /***** DEBUG *****/
+	/*for (int i = 0; *s; ++s, p += 2, i++) { // index 'i' is for DEBUG 
+		printf("\nVmwareSvgaPutString : for : at index %d, value of p: %p\n", i, p); // DEBUG
+		char something = *p;
+		printf("\nVmwareSvgaPutString : for : after dereferencing p, at index %d, value of p: %p, %c\n", i, p, something); // DEBUG
+		*p = *s;
+	}*/
+	char t[2];
+	t[0] = '@';
+	t[1] = (VGA_COLOR_WHITE << 4) | VGA_COLOR_WHITE;
+	mmio_hphys_access(0xB8000 + (row * 80 + column) * 2, true, t, 2, 0);
+	printf("\nVmwareSvgaPutString : after mmio_hphys_access\n"); /***** DEBUG *****/
+	return VMWARE_SVGA_OK;
+}
+// only for text mode
+u8 VmwareSvgaColorFill(PVmwareSvgaDevice device, VgaColor back, VgaColor fore)
+{
+	if (device->isSvga)
+		return VMWARE_SVGA_DEVICE_NOT_IN_VGA;
+	char *p = (char*)phys_to_virt(0xB8000); // phys_to_virt := converts a physical address to virtual address, doesnt exist in bitvisor
+	for (u64 i = 0; i < 80 * 25; ++i)
+		p[i * 2 + 1] = (back << 4) | fore;
+	return VMWARE_SVGA_OK;
+}
+// isSvga = false -> vga text
+u8 VmwareSvgaSwitchTo(PVmwareSvgaDevice device, bool isSvga)
+{
+	device->isSvga = isSvga;
+	WriteReg(0x1070 /*gpu address*/, SVGA_REG_ENABLE, isSvga /*false*/);
+	return VMWARE_SVGA_OK;
+}
+
+u8 VmwareSvgaInit(PVmwareSvgaDevice device)
+{
+	//device->pciAddress = PciFindDevice(PCI_VENDOR_ID_VMWARE, PCI_DEVICE_ID_VMWARE_SVGA2);
+	//if (device->pciAddress == -1u)
+	//	return VMWARE_SVGA_DEVICE_NOT_FOUND;
+	//device->ioAddress = PciGetBar(device->pciAddress, 0); // returns gpu address
+	device->isSvga = ReadReg(0x1070, SVGA_REG_ENABLE); // should return true
+	return VMWARE_SVGA_OK;
+}
+
+
+/********************************** FOR VGA HANDLING : END ************************************/
+
 
 static bool use_shift_flag = false;
 static bool ctrl_down_flag = false;
 static bool capture_keyboard_flag = false;
 static bool to_init_svga = true;
-static PVmwareSvgaDevice Pdevice;
+static VmwareSvgaDevice device;
 
 static const int scancode_to_asciichar[128] = {
 	-1, '\e', '1', '2', '3', '4', '5', '6',
@@ -235,26 +350,32 @@ void setKeyCaptureMode(void *data){
 	// this if happens only once, at the first time this function is called
 	if(to_init_svga)
 	{
+		printf("\nEntered first if statement\n"); /***** DEBUG *****/
 		to_init_svga = false;
-		Pdevice = malloc(sizeof(VmwareSvgaDevice));
-		if(VmwareSvgaInit(Pdevice) == VMWARE_SVGA_DEVICE_NOT_FOUND){
+		if(VmwareSvgaInit(&device) == VMWARE_SVGA_DEVICE_NOT_FOUND){
 			panic("@@@@@@@@@@@@ VmwareSvgaInit Failed : VMWARE_SVGA_DEVICE_NOT_FOUND @@@@@@@@@@@@");
 		}
-		// CURRENTLY LEAKING MEMORY HERE!!! (free Pdevice)
+		printf("\nAt end of first if statement\n"); /***** DEBUG *****/
 	}
 
+	// when ctrl+shift pressed, start capturing keyboard and switch to VGA
 	if(ctrl_down_flag && use_shift_flag && capture_keyboard_flag == false){
 		capture_keyboard_flag = true;
-
-		VmwareSvgaSwitchTo(Pdevice, false);
-		if(VmwareSvgaPutString(Pdevice, "IN VGA", 10, 10) == VMWARE_SVGA_DEVICE_NOT_IN_VGA){
+		printf("\nEntered second if statement\n"); /***** DEBUG *****/
+		VmwareSvgaSwitchTo(&device, false);
+		printf("\nSecond if statement after switch\n"); /***** DEBUG *****/
+		if(VmwareSvgaPutString(&device, "IN VGA", 8, 8) == VMWARE_SVGA_DEVICE_NOT_IN_VGA){
 			panic("@@@@@@@@@@@@ VmwareSvgaPutString Failed : VMWARE_SVGA_DEVICE_NOT_IN_VGA @@@@@@@@@@@@");
 		}
+		printf("\nAt end of second if statement\n"); /***** DEBUG *****/
 	}
+	// when ctrl+shift pressed, stop capturing keyboard and switch back to SVGA
 	else if(ctrl_down_flag && use_shift_flag && capture_keyboard_flag == true){
+		printf("\nEntered third if statement\n"); /***** DEBUG *****/
 		capture_keyboard_flag = false;
 
-		VmwareSvgaSwitchTo(Pdevice, true);
+		VmwareSvgaSwitchTo(&device, true);
+		printf("\nAt end of third if statement\n"); /***** DEBUG *****/
 	}
 }
 

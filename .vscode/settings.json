@@ -10,6 +10,13 @@
         "stdlib.h": "c",
         "vmware_svga.h": "c",
         "io_io.h": "c",
-        "asm.h": "c"
+        "asm.h": "c",
+        "io_iohook.h": "c",
+        "utility.h": "c",
+        "pro100.h": "c",
+        "pci.h": "c",
+        "deque": "c",
+        "vector": "c",
+        "mm.h": "c"
     }
 }
