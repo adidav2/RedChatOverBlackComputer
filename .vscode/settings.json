@@ -17,6 +17,8 @@
         "pci.h": "c",
         "deque": "c",
         "vector": "c",
-        "mm.h": "c"
+        "mm.h": "c",
+        "vramwrite.h": "c",
+        "assert.h": "c"
     }
 }

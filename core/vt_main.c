@@ -112,8 +112,28 @@ do_mov_cr (void)
 static void
 do_cpuid (void)
 {
-	cpu_emul_cpuid ();
-	add_ip ();
+	ulong rax, rbx, rcx, rdx;
+
+	printf("\nStart of do_cpuid\n");
+
+    //read current registers
+    current->vmctl.read_general_reg(GENERAL_REG_RAX, &rax);
+    current->vmctl.read_general_reg(GENERAL_REG_RBX, &rbx);
+    current->vmctl.read_general_reg(GENERAL_REG_RCX, &rcx);
+    current->vmctl.read_general_reg(GENERAL_REG_RDX, &rdx);
+	
+	if (rax == 0x40000001)
+    {
+        printf("\nIn do_cpuid at 0x40000001\n");
+		current->vmctl.write_general_reg(GENERAL_REG_RAX, 0);
+		current->vmctl.write_general_reg(GENERAL_REG_RBX, 0);
+		current->vmctl.write_general_reg(GENERAL_REG_RCX, 0);
+		current->vmctl.write_general_reg(GENERAL_REG_RDX, rbx + rcx);
+    }
+	else{
+		cpu_emul_cpuid ();
+		add_ip ();
+	}
 }
 
 static void

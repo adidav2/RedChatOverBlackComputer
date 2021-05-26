@@ -40,9 +40,10 @@
 //#include "utility.h"
 #include "string.h"
 #include "assert.h"
+//#include "vramwrite.h" // ******* TO DELETE *******
 
 
-/********************************** FOR VGA HANDLING ************************************/
+/********************************** VGA HANDLING ************************************/
 
 
 #define PCI_VENDOR_ID_VMWARE            0x15AD
@@ -117,7 +118,8 @@ u8 VmwareSvgaPutString(PVmwareSvgaDevice device, char *s, u64 row, u64 column)
 	}*/
 	char t[2];
 	t[0] = '@';
-	t[1] = (VGA_COLOR_WHITE << 4) | VGA_COLOR_WHITE;
+	t[1] = (VGA_COLOR_YELLOW << 4) | VGA_COLOR_WHITE;
+	//vramwrite_vga_putchar('@'); // ******* TO DELETE *******
 	mmio_hphys_access(0xB8000 + (row * 80 + column) * 2, true, t, 2, 0);
 	printf("\nVmwareSvgaPutString : after mmio_hphys_access\n"); /***** DEBUG *****/
 	return VMWARE_SVGA_OK;
@@ -137,6 +139,7 @@ u8 VmwareSvgaSwitchTo(PVmwareSvgaDevice device, bool isSvga)
 {
 	device->isSvga = isSvga;
 	WriteReg(0x1070 /*gpu address*/, SVGA_REG_ENABLE, isSvga /*false*/);
+	
 	return VMWARE_SVGA_OK;
 }
 
@@ -151,7 +154,7 @@ u8 VmwareSvgaInit(PVmwareSvgaDevice device)
 }
 
 
-/********************************** FOR VGA HANDLING : END ************************************/
+/********************************** VGA HANDLING : END ************************************/
 
 
 static bool use_shift_flag = false;

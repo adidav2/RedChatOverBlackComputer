@@ -413,6 +413,7 @@ do_init (void)
 static void
 do_cpuid (void)
 {
+	printf("In svm_main.c : do_cpuid");
 	cpu_emul_cpuid ();
 	current->u.svm.vi.vmcb->rip += 2;
 }

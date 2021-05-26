@@ -42,6 +42,8 @@ cpu_emul_cpuid (void)
 	u32 ia, ic, oa, ob, oc, od;
 	ulong la, lc;
 
+	printf("cpu_emul.c : cpu_emul_cpuid");
+
 	current->vmctl.read_general_reg (GENERAL_REG_RAX, &la);
 	current->vmctl.read_general_reg (GENERAL_REG_RCX, &lc);
 	ia = la;

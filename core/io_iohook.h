@@ -62,7 +62,7 @@ typedef struct
 {
 	u32 pciAddress;
 	u32 ioAddress;
-	bool isSvga; // ***was bool in original code***
+	bool isSvga;
 } VmwareSvgaDevice, *PVmwareSvgaDevice;
 
 u8 VmwareSvgaInit(PVmwareSvgaDevice device);
